@@ -15,44 +15,39 @@ let time = 0;
 let yesScale = 1;
 let audioStarted = false;
 
-// ---- AUDIO FIX ----
 
-// Remove autoplay behavior safely
-music.autoplay = false;
-music.volume = 0;
-
-// Start music on FIRST interaction (browser compliant)
-function startMusic() {
+// ===============================
+// MOBILE SAFE AUDIO FUNCTION
+// ===============================
+function playMusicMobileSafe() {
     if (audioStarted) return;
     audioStarted = true;
 
-    music.play().then(() => {
-        // Smooth fade in
-        let fade = setInterval(() => {
-            if (music.volume < 0.9) {
-                music.volume += 0.03;
-            } else {
-                music.volume = 1;
-                clearInterval(fade);
-            }
-        }, 120);
-    }).catch(err => {
-        console.log("Audio blocked:", err);
-    });
+    try {
+        music.pause();
+        music.currentTime = 0;
+        music.load(); // Important for Safari/iOS
+        
+        music.volume = 0;
+        
+        music.play().then(() => {
+            // Smooth fade in
+            let fade = setInterval(() => {
+                if (music.volume < 1) {
+                    music.volume += 0.05;
+                } else {
+                    music.volume = 1;
+                    clearInterval(fade);
+                }
+            }, 120);
+        }).catch(err => {
+            console.log("Audio blocked:", err);
+        });
+
+    } catch (e) {
+        console.log("Audio error:", e);
+    }
 }
-
-// Trigger on first user interaction
-document.addEventListener("click", startMusic, { once: true });
-document.addEventListener("touchstart", startMusic, { once: true });
-
-
-// "No" button phrases
-const phrases = [
-    "No", "Are you sure?", "Really?", "Think again!",
-    "Last chance!", "Don't break my heart", "Pls?", "I have snacks!",
-    "Look at the other button ->", "Error 404: No not found"
-];
-let phraseIndex = 0;
 
 
 // --- SETUP ---
@@ -63,13 +58,27 @@ window.onload = () => {
 };
 
 window.addEventListener('resize', resize);
+
 function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
 }
 
 
-// --- INTERACTION LOGIC ---
+// ===============================
+// INTERACTION LOGIC
+// ===============================
+
+// "No" button phrases
+const phrases = [
+    "No", "Are you sure?", "Really?", "Think again!",
+    "Last chance!", "Don't break my heart", "Pls?", 
+    "I have snacks!", "Look at the other button ->", 
+    "Error 404: No not found"
+];
+
+let phraseIndex = 0;
+
 
 // 1. "No" Button Dodging
 const moveNoButton = () => {
@@ -108,19 +117,23 @@ window.acceptProposal = function () {
     if (isCelebrated) return;
     isCelebrated = true;
 
-    // Ensure music starts if not already
-    startMusic();
+    // 🔥 MOBILE SAFE AUDIO TRIGGER
+    playMusicMobileSafe();
 
-    document.getElementById('mainUI').style.transition = 'opacity 1s';
-    document.getElementById('mainUI').style.opacity = '0';
-    document.getElementById('mainUI').style.pointerEvents = 'none';
+    // Hide UI smoothly
+    const mainUI = document.getElementById('mainUI');
+    mainUI.style.transition = 'opacity 1s';
+    mainUI.style.opacity = '0';
+    mainUI.style.pointerEvents = 'none';
 
+    // Show Success Layer
     const layer = document.getElementById('successScreen');
     layer.style.opacity = '1';
     layer.querySelector('h2').style.transform = 'scale(1)';
 
     createHeartRain();
 
+    // Particle explosion
     particles.forEach(p => {
         p.friction = 0.96;
         p.vx = (Math.random() - 0.5) * 15;
@@ -130,7 +143,9 @@ window.acceptProposal = function () {
 };
 
 
-// Heart Rain
+// ===============================
+// HEART RAIN
+// ===============================
 function createHeartRain() {
     const container = document.body;
     const heartChars = ['❤️', '💖', '💕', '💗'];
@@ -146,17 +161,23 @@ function createHeartRain() {
 
         container.appendChild(heart);
 
-        setTimeout(() => { heart.remove(); }, 5000);
+        setTimeout(() => heart.remove(), 5000);
     }, 100);
 }
 
 
-// --- PARTICLE SYSTEM ---
+// ===============================
+// PARTICLE SYSTEM
+// ===============================
 class Particle {
     constructor() {
         this.setHeartPos();
-        this.x = this.tx; this.y = this.ty; this.z = this.tz;
-        this.vx = 0; this.vy = 0; this.vz = 0;
+        this.x = this.tx; 
+        this.y = this.ty; 
+        this.z = this.tz;
+        this.vx = 0; 
+        this.vy = 0; 
+        this.vz = 0;
         this.size = Math.random() * 2;
         this.friction = 0.92;
         this.color = `hsl(${340 + Math.random() * 40}, 100%, ${50 + Math.random() * 30}%)`;
@@ -168,7 +189,10 @@ class Particle {
         let scale = Math.pow(u, 1 / 3) * HEART_SIZE;
 
         let x = 16 * Math.pow(Math.sin(t), 3);
-        let y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+        let y = -(13 * Math.cos(t) 
+            - 5 * Math.cos(2 * t) 
+            - 2 * Math.cos(3 * t) 
+            - Math.cos(4 * t));
         let z = (Math.random() - 0.5) * 10;
 
         this.tx = x * scale;
@@ -178,8 +202,14 @@ class Particle {
 
     update(beat) {
         if (isCelebrated) {
-            this.x += this.vx; this.y += this.vy; this.z += this.vz;
-            this.vx *= this.friction; this.vy *= this.friction; this.vz *= this.friction;
+            this.x += this.vx; 
+            this.y += this.vy; 
+            this.z += this.vz;
+
+            this.vx *= this.friction; 
+            this.vy *= this.friction; 
+            this.vz *= this.friction;
+
             this.size *= 0.99;
         } else {
             let pulse = 1 + beat * 0.1;
@@ -222,11 +252,15 @@ class Particle {
 
 function initParticles() {
     particles = [];
-    for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push(new Particle());
+    }
 }
 
 
-// --- ANIMATION ---
+// ===============================
+// ANIMATION LOOP
+// ===============================
 let rotX = 0, rotY = 0;
 let targetRotY = 0;
 let mouse = { x: 0, y: 0 };
